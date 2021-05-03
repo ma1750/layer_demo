@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O4 -Wall -I ./include
+CFLAGS = -O4 -Wall -I ./includes
 
 all: layer
 
