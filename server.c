@@ -6,12 +6,20 @@
 #include <unistd.h>
 #include <string.h>
 #include "server.h"
+#include "global.h"
+#include "md5.h"
 
 #define VERSION 9999
+#define APP_TYPE_CODE 1234
 
 void unpack_ip(ip_t*, char*);
+void unpack_tcp(tcp_t*, char*);
+void unpack_udp(udp_t*, char*);
 int check_ip_layer(ip_t*);
+int check_tcp_layer(tcp_t*, char*);
+int check_udp_layer(udp_t*);
 void print_error(int);
+void gen_MD5(unsigned char*, char *, int);
 
 int main(void)
 {
@@ -46,6 +54,28 @@ int main(void)
             close(client_sockfd);
             continue;
         }
+
+        if (ip.type == 0) {
+            // TCP
+            tcp_t tcp;
+            unpack_tcp(&tcp, recv_buf);
+            ret_code = check_tcp_layer(&tcp, recv_buf);
+            if (ret_code != -1) {
+                print_error(ret_code);
+                close(client_sockfd);
+                continue;
+            }
+        } else if (ip.type == 1) {
+            // UDP
+            udp_t udp;
+            unpack_udp(&udp, recv_buf);
+            ret_code = check_udp_layer(&udp);
+            if (ret_code != -1) {
+                print_error(ret_code);
+                close(client_sockfd);
+                continue;
+            }
+        }
         close(client_sockfd);
     }
 }
@@ -70,6 +100,39 @@ void unpack_ip(ip_t *ret_ptr, char *msg_ptr)
 }
 
 
+void unpack_tcp(tcp_t *ret_ptr, char *msg_ptr)
+{
+    char type[5];
+    char len[5];
+
+    strncpy(type, msg_ptr+12, 4);
+    type[4] = '\0';
+    strncpy(len, msg_ptr+16, 4);
+    len[4] = '\0';
+    strncpy(ret_ptr -> digest, msg_ptr+20, 32);
+    ret_ptr -> digest[32] = '\0';
+
+    ret_ptr -> type = atoi(type);
+    ret_ptr -> len = atoi(len);
+}
+
+
+void unpack_udp(udp_t *ret_ptr, char *msg_ptr)
+{
+    char type[5];
+    char len[5];
+
+    strncpy(type, msg_ptr+12, 4);
+    type[4] = '\0';
+    strncpy(len, msg_ptr+16, 4);
+    len[4] = '\0';
+
+    ret_ptr -> type = atoi(type);
+    ret_ptr -> len = atoi(len);
+
+}
+
+
 int check_ip_layer(ip_t *ip_ptr)
 {
     if(ip_ptr -> ttl <= 0){
@@ -82,13 +145,60 @@ int check_ip_layer(ip_t *ip_ptr)
     };
     if (ip_ptr -> type != 0 && ip_ptr -> type != 1) {
         // invalid type
-        return e_type;
+        return e_protocol_type;
     }
     return -1;
 }
 
 
+int check_tcp_layer(tcp_t *tcp_ptr, char *msg_ptr)
+{
+    char payload[tcp_ptr -> len + 1];
+    unsigned char md5[16];
+    char digest[33];
+    if (tcp_ptr -> type != APP_TYPE_CODE) {
+        // upper layer type is invalid
+        return e_app_type;
+    }
+
+    strncpy(payload, msg_ptr+52, tcp_ptr -> len);
+    payload[32] = '\0';
+    gen_MD5(md5, payload, tcp_ptr -> len);
+    char tmp[2];
+    for (int i = 0; i < 16; ++i) {
+        snprintf(tmp, 4, "%02x", md5[i]);
+        digest[2*i] = tmp[0];
+        digest[2*i+1] = tmp[1];
+    }
+    digest[32] = '\0';
+
+    if (strncmp(tcp_ptr -> digest, digest, 32) != 0)
+    {
+        return e_hash;
+    }
+    return -1;
+}
+
+
+int check_udp_layer(udp_t *udp_ptr)
+{
+    if (udp_ptr -> type != APP_TYPE_CODE) {
+        // upper layer type is invalid
+        return e_app_type;
+    }
+    return -1;
+}
+
 void print_error(int code)
 {
     printf("[error]: %s\n", error_messages[code]);
+}
+
+
+void gen_MD5(unsigned char *ret_ptr, char *target_ptr, int target_len)
+{
+    MD5_CTX context;
+    MD5Init(&context);
+    MD5Update(&context, target_ptr, target_len);
+    MD5Final(ret_ptr, &context);
 }

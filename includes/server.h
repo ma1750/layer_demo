@@ -9,7 +9,7 @@ typedef struct
 {
     int type;
     int len;
-    char digest[32];
+    char digest[33];
 } tcp_t;
 
 typedef struct
@@ -23,13 +23,17 @@ typedef enum
 {
     e_ttl,
     e_version,
-    e_type,
+    e_protocol_type,
+    e_app_type,
+    e_hash,
 
     errors_num
 } errors_t;
 
-static char error_messages[errors_num][20] = {
+static char error_messages[errors_num][30] = {
     "TTL time out",
     "version not match",
-    "invalid type"
+    "invalid protocol type",
+    "upper layer type is invalid",
+    "MD5 is diffarent"
 };
