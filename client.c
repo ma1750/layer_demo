@@ -21,7 +21,7 @@ void gen_MD5(unsigned char*, char *, int);
 int main(int argc, char const *argv[])
 {
     if (argc != 3) {
-        fprintf(stderr, "[Usage] %s file_name type\n\ttype| TCP: 0, UDP: 1\n", argv[0]);
+        fprintf(stderr, "[Usage] %s type filename\n\ttype| TCP: 0, UDP: 1\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -29,7 +29,7 @@ int main(int argc, char const *argv[])
     struct sockaddr_un address ;
     FILE *fp = NULL;
 
-    fp = fopen(argv[1], "r");
+    fp = fopen(argv[2], "r");
     if (!fp) {
         perror("fopen() failed");
         exit(EXIT_FAILURE);
@@ -46,7 +46,7 @@ int main(int argc, char const *argv[])
     }
     fclose(fp);
 
-    int type = atoi(argv[2]);
+    int type = atoi(argv[1]);
     int buf_length = 0;
     char *sendbuf;
     if (type == 0) {
