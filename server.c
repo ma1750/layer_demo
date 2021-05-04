@@ -180,7 +180,6 @@ int check_tcp_layer(tcp_t *tcp_ptr, char *msg_ptr)
     }
 
     strncpy(payload, msg_ptr+52, tcp_ptr -> len);
-    payload[32] = '\0';
     gen_MD5(md5, payload, tcp_ptr -> len);
     char tmp[2];
     for (int i = 0; i < 16; ++i) {
