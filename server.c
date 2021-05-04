@@ -5,30 +5,13 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <string.h>
+#include "server.h"
 
-
-typedef struct
-{
-    int type;
-    int version;
-    int ttl;
-} ip_t;
-
-typedef struct
-{
-    int type;
-    int len;
-    char digest[32];
-} tcp_t;
-
-typedef struct
-{
-    int type;
-    int len;
-} udp_t;
-
+#define VERSION 9999
 
 void unpack_ip(ip_t*, char*);
+int check_ip_layer(ip_t*);
+void print_error(int);
 
 int main(void)
 {
@@ -46,8 +29,8 @@ int main(void)
 
     listen(server_sockfd , 5);
     char recv_buf[1024];
+    int ret_code = 0;
     while(1) {
-
         printf("server waiting\n");
 
         client_sockfd = accept(server_sockfd ,
@@ -57,6 +40,12 @@ int main(void)
         printf("recv: %s\n", recv_buf);
         ip_t ip;
         unpack_ip(&ip, recv_buf);
+        ret_code = check_ip_layer(&ip);
+        if (ret_code != -1) {
+            print_error(ret_code);
+            close(client_sockfd);
+            continue;
+        }
         close(client_sockfd);
     }
 }
@@ -78,4 +67,28 @@ void unpack_ip(ip_t *ret_ptr, char *msg_ptr)
     ret_ptr -> type = atoi(type);
     ret_ptr -> version = atoi(version);
     ret_ptr -> ttl = atoi(ttl);
+}
+
+
+int check_ip_layer(ip_t *ip_ptr)
+{
+    if(ip_ptr -> ttl <= 0){
+        // packet is dead :(
+        return e_ttl;
+    }
+    if (ip_ptr -> version != VERSION) {
+        // version mismatch
+        return e_version;
+    };
+    if (ip_ptr -> type != 0 && ip_ptr -> type != 1) {
+        // invalid type
+        return e_type;
+    }
+    return -1;
+}
+
+
+void print_error(int code)
+{
+    printf("[error]: %s\n", error_messages[code]);
 }
