@@ -39,6 +39,7 @@ int main(int argc, char const *argv[])
         fclose(fp);
         exit(EXIT_FAILURE);
     }
+    fclose(fp);
 
     sockfd = socket(AF_UNIX,SOCK_STREAM,0);
     if (sockfd == -1) {
@@ -59,7 +60,6 @@ int main(int argc, char const *argv[])
 
     write(sockfd, file_buf, sizeof(file_buf));
     close(sockfd);
-    fclose(fp);
     exit(0);
 }
 
