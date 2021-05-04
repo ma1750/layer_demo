@@ -9,6 +9,7 @@
 #include "md5.h"
 
 int get_file_length(FILE*);
+int enclose_ip(char*, char*, int, int, int, int);
 int enclose_tcp(char*, char*, int, int);
 int enclose_udp(char*, char*, int, int);
 void gen_MD5(unsigned char*, char *, int);
@@ -81,6 +82,15 @@ int get_file_length(FILE *fp)
         perror("fseek() failed");
     }
     return len;
+}
+
+
+int enclose_ip(char *ret_ptr, char *payload_ptr, int payload_len, int type, int version, int ttl)
+{
+    int ret_len = 0;
+    ret_len = snprintf(ret_ptr, 12+payload_len,
+                        "%04d%04d%04d%s", type, version, ttl, payload_ptr);
+    return ret_len;
 }
 
 
