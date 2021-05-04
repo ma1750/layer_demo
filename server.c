@@ -50,6 +50,11 @@ int main(void)
                                 (struct sockaddr *)&client_address , &client_len);
 
         len = read(client_sockfd,recv_buf,1024);
+        if (len == -1) {
+            perror("read() failed");
+            close(client_sockfd);
+            continue;
+        }
         recv_buf[len] = '\0';
         printf("recv %d: %s\n", len, recv_buf);
         ip_t ip;
