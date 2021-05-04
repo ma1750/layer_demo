@@ -20,6 +20,10 @@ int check_tcp_layer(tcp_t*, char*);
 int check_udp_layer(udp_t*);
 void print_error(int);
 void gen_MD5(unsigned char*, char *, int);
+void print_IP(ip_t*);
+void print_TCP(tcp_t*);
+void print_UDP(udp_t*);
+void print_APP(char*);
 
 int main(void)
 {
@@ -37,6 +41,7 @@ int main(void)
 
     listen(server_sockfd , 5);
     char recv_buf[1024];
+    int len = 0;
     int ret_code = 0;
     while(1) {
         printf("server waiting\n");
@@ -44,8 +49,9 @@ int main(void)
         client_sockfd = accept(server_sockfd ,
                                 (struct sockaddr *)&client_address , &client_len);
 
-        read(client_sockfd,recv_buf,1024);
-        printf("recv: %s\n", recv_buf);
+        len = read(client_sockfd,recv_buf,1024);
+        recv_buf[len] = '\0';
+        printf("recv %d: %s\n", len, recv_buf);
         ip_t ip;
         unpack_ip(&ip, recv_buf);
         ret_code = check_ip_layer(&ip);
@@ -54,6 +60,7 @@ int main(void)
             close(client_sockfd);
             continue;
         }
+        print_IP(&ip);
 
         if (ip.type == 0) {
             // TCP
@@ -65,6 +72,12 @@ int main(void)
                 close(client_sockfd);
                 continue;
             }
+            print_TCP(&tcp);
+
+            char msg[tcp.len + 1];
+            strncpy(msg, recv_buf+52, tcp.len);
+            msg[tcp.len] = '\0';
+            print_APP(msg);
         } else if (ip.type == 1) {
             // UDP
             udp_t udp;
@@ -75,6 +88,11 @@ int main(void)
                 close(client_sockfd);
                 continue;
             }
+            print_UDP(&udp);
+
+            char msg[udp.len +1];
+            strncpy(msg, recv_buf+20, udp.len);
+            print_APP(msg);
         }
         close(client_sockfd);
     }
@@ -201,4 +219,37 @@ void gen_MD5(unsigned char *ret_ptr, char *target_ptr, int target_len)
     MD5Init(&context);
     MD5Update(&context, target_ptr, target_len);
     MD5Final(ret_ptr, &context);
+}
+
+
+void print_IP(ip_t *ip_ptr)
+{
+    printf("--- layer1 [IP] ---\n");
+    printf("type = %4d\n", ip_ptr -> type);
+    printf("version = %4d\n", ip_ptr -> version);
+    printf("ttl = %4d\n", ip_ptr -> ttl);
+}
+
+
+void print_TCP(tcp_t *tcp_ptr)
+{
+    printf("--- layer2 [TCP] ---\n");
+    printf("type = %4d\n", tcp_ptr -> type);
+    printf("len = %4d\n", tcp_ptr -> len);
+    printf("digest = %s\n", tcp_ptr -> digest);
+}
+
+
+void print_UDP(udp_t *udp_ptr)
+{
+    printf("--- layer2 [UDP] ---\n");
+    printf("type = %4d\n", udp_ptr -> type);
+    printf("len = %4d\n", udp_ptr -> len);
+}
+
+
+void print_APP(char *msg)
+{
+    printf("--- layer3 [application] ---\n");
+    printf("%s\n", msg);
 }
