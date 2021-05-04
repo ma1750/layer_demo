@@ -5,8 +5,13 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <string.h>
+#include "global.h"
+#include "md5.h"
 
 int get_file_length(FILE*);
+int enclose_tcp(char*, char*, int, int);
+int enclose_udp(char*, char*, int, int);
+void gen_MD5(unsigned char*, char *, int);
 
 int main(int argc, char const *argv[])
 {
@@ -76,4 +81,42 @@ int get_file_length(FILE *fp)
         perror("fseek() failed");
     }
     return len;
+}
+
+
+int enclose_tcp(char *ret_ptr, char *payload_ptr, int payload_len, int type)
+{
+    int ret_len = 0;
+    char ret[40+payload_len];
+    unsigned char digest[16];
+    gen_MD5(digest, payload_ptr, payload_len);
+
+    ret_len = snprintf(ret, 8, "%04d%04d", type, payload_len);
+    char tmp[2];
+    for (int i = 0; i < 16; ++i) {
+        snprintf(tmp, 4, "%02x", digest[i]);
+        ret[8+2*(i-1)] = tmp[0];
+        ret[8+2*i-1] = tmp[1];
+    }
+
+    ret_len = snprintf(ret_ptr, 40+payload_len, "%s%s", ret, payload_ptr);
+    return ret_len;
+}
+
+
+int enclose_udp(char *ret_ptr, char *payload_ptr, int payload_len, int type)
+{
+    int ret_len = 0;
+    ret_len = snprintf(ret_ptr, 8+payload_len, "%04d%04d%s",
+                        type, payload_len, payload_ptr);
+    return ret_len;
+}
+
+
+void gen_MD5(unsigned char *ret_ptr, char *target_ptr, int target_len)
+{
+    MD5_CTX context;
+    MD5Init(&context);
+    MD5Update(&context, target_ptr, target_len);
+    MD5Final(ret_ptr, &context);
 }
